@@ -1,29 +1,9 @@
-// @ts-nocheck
-import {
-  keymap,
-  highlightActiveLine,
-  lineNumbers,
-  highlightActiveLineGutter,
-  placeholder,
-  highlightWhitespace,
-  highlightTrailingWhitespace,
-} from '@codemirror/view';
-import {
-  markdown,
-  markdownLanguage,
-  markdownKeymap,
-} from '@codemirror/lang-markdown';
 import './style.css';
-import { Extension, Prec } from '@codemirror/state';
+
 import { EditorView, basicSetup } from 'codemirror';
-import {
-  startCompletion,
-  acceptCompletion,
-  Completion,
-  autocompletion,
-  CompletionContext,
-  CompletionResult,
-} from '@codemirror/autocomplete';
+import { autocompletion } from '@codemirror/autocomplete';
+import { CompletionContext } from '@codemirror/autocomplete';
+import { syntaxTree } from '@codemirror/language';
 
 const tagOptions = [
   'constructor',
@@ -32,7 +12,11 @@ const tagOptions = [
   'param',
   'returns',
   'type',
-].map((tag) => ({ label: '@' + tag, type: 'keyword' }));
+].map((tag) => ({
+  label: '@' + tag + '😄', // emoji normal
+  type: 'keyword',
+  displayLabel: '😄' + tag, // use displayLabel for emoji bug: emoji error
+}));
 
 function completeJSDoc(context: CompletionContext) {
   let nodeBefore = syntaxTree(context.state).resolveInner(context.pos, -1);
@@ -48,57 +32,28 @@ function completeJSDoc(context: CompletionContext) {
     from: tagBefore ? nodeBefore.from + tagBefore.index : context.pos,
     options: tagOptions,
     validFor: /^(@\w*)?$/,
-  };
-}
-
-function myCompletions(context: CompletionContext): CompletionResult {
-  console.log(context);
-  let word = context.matchBefore(/\w*/);
-  if (word.from == word.to && !context.explicit) return null;
-
-  return {
-    from: word.from,
-    options: [
-      {
-        label: '#😄 match',
-        displayLabel: '😄 match',
-        section: '(Tags)',
-      },
-      {
-        label: 'one',
-        displayLabel: 'one',
-      },
-    ],
-    getMatch: (compltion: Completion, matched) => {
-      console.log(matched);
-      return matched as [];
+    // @ts-ignore
+    getMatch: (x, y) => {
+      return y;
     },
   };
 }
+
+import { javascriptLanguage } from '@codemirror/lang-javascript';
+
+const jsDocCompletions = javascriptLanguage.data.of({
+  autocomplete: completeJSDoc,
+});
 
 new EditorView({
   doc: '/** Complete tags here\n    @pa\n */\n',
   extensions: [
     basicSetup,
-    markdown(),
-    markdownLanguage,
-    markdownLanguage.data.of({
-      autocompletion: completeJSDoc,
-    }),
+    javascriptLanguage,
+    jsDocCompletions,
     autocompletion({
-      // override: [myCompletions],
       closeOnBlur: false,
     }),
-    keymap.of([
-      {
-        key: 'Tab',
-        run: acceptCompletion,
-      },
-      {
-        key: 'Ctrl-Space',
-        run: startCompletion,
-      },
-    ]),
   ],
   parent: document.body,
 });
